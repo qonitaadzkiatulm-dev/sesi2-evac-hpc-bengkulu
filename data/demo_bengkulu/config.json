@@ -1,0 +1,12 @@
+{
+  "bbox": [
+    102.25,
+    -3.815,
+    102.265,
+    -3.803
+  ],
+  "cell_m": 10,
+  "sea_below_m": 0.0,
+  "max_runup_m": 10.0,
+  "high_ground_is_safe": true
+}

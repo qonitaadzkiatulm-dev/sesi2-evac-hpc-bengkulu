@@ -4,6 +4,7 @@ Setiap skenario independen -> "embarrassingly parallel", cocok untuk HPC.
 Contoh:
   python -m evac.sweep --backend multiprocessing --workers 4 --reps 5
   mpirun -n 64 python -m evac.sweep --backend mpi --reps 20
+  python -m evac.sweep --data-dir data/demo_bengkulu --out results/results_data.csv
 """
 import argparse
 import itertools
@@ -15,7 +16,11 @@ import pandas as pd
 from .model import Scenario, run
 
 
-def make_scenarios(reps, n_agents=1000):
+def make_scenarios(reps, n_agents=1000, data_dir=""):
+    if data_dir:  # data nyata: variasikan jeda peringatan x waktu tiba tsunami
+        grid = itertools.product([0, 5, 10, 15], [10, 15, 20], range(reps))
+        return [Scenario(n_agents=n_agents, warning_delay_min=d, tsunami_arrival_min=a,
+                         seed=r, data_dir=data_dir) for d, a, r in grid]
     grid = itertools.product([0, 5, 10, 15], [2, 4, 6], [1, 2, 3], range(reps))
     return [Scenario(n_agents=n_agents, warning_delay_min=d, n_shelters=s, n_bridges=b, seed=r)
             for d, s, b, r in grid]
@@ -45,9 +50,10 @@ def main():
     ap.add_argument("--reps", type=int, default=3)
     ap.add_argument("--agents", type=int, default=1000)
     ap.add_argument("--out", default="results/results.csv")
+    ap.add_argument("--data-dir", default="", help="folder data nyata; kosong = peta sintetis")
     a = ap.parse_args()
 
-    scs = make_scenarios(a.reps, a.agents)
+    scs = make_scenarios(a.reps, a.agents, a.data_dir)
     t0 = time.perf_counter()
     res = {"serial": lambda: run_serial(scs),
            "multiprocessing": lambda: run_mp(scs, a.workers),

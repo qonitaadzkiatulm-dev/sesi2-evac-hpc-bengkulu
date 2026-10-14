@@ -14,6 +14,24 @@ def main():
     a = ap.parse_args()
     df = pd.read_csv(a.csv)
 
+    if "data_dir" in df and df["data_dir"].notna().any():   # mode data nyata
+        fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+        for arr, g in df.groupby("tsunami_arrival_min"):
+            m = g.groupby("warning_delay_min").agg(s=("survival_rate", "mean"), t=("mean_evac_min", "mean"))
+            axes[0].plot(m.index, m.s * 100, marker="o", label=f"tsunami tiba {arr:g} mnt")
+            axes[1].plot(m.index, m.t, marker="s", label=f"tsunami tiba {arr:g} mnt")
+        axes[0].set(xlabel="Jeda peringatan (menit)", ylabel="Tingkat selamat (%)", title="Tingkat selamat")
+        axes[1].set(xlabel="Jeda peringatan (menit)", ylabel="Rata-rata waktu evakuasi (menit)",
+                    title="Waktu evakuasi (yang selamat)")
+        axes[0].legend()
+        plt.tight_layout()
+        plt.savefig(a.fig, dpi=130)
+        tbl = df.pivot_table(index="warning_delay_min", columns="tsunami_arrival_min",
+                             values="survival_rate", aggfunc="mean") * 100
+        print("Tingkat selamat (%): jeda peringatan (baris) x waktu tiba tsunami (kolom)")
+        print(tbl.round(1).to_string())
+        return
+
     fig, axes = plt.subplots(1, 2, figsize=(11, 4))
     for s, g in df.groupby("n_shelters"):
         m = g.groupby("warning_delay_min")["survival_rate"].mean() * 100

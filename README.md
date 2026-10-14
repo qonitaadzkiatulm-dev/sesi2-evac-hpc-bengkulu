@@ -2,7 +2,7 @@
 
 Studi kasus berdasarkan kuliah tamu **"Bridging Global Infrastructure to Address Local Challenge in High Performance Computing"** (Dr. Warawan, Thammasat University, Informatics Practitioner Lecture Series). Repositori ini menunjukkan alur *integrator* yang dibahas pemateri: dari **masalah lokal → model → workflow komputasi → eksekusi paralel di HPC → hasil yang bisa dipakai pengambil keputusan**.
 
-> **Catatan penting:** peta, populasi, dan parameter di sini **sintetis** (bukan data nyata Kota Bengkulu). Hasil menunjukkan *cara kerja metodenya*, bukan rekomendasi kebijakan. Untuk riset sungguhan, ganti `build_map()` dengan DEM, jaringan jalan, dan lokasi shelter resmi (BPBD/BMKG/BIG).
+> **Catatan penting:** secara bawaan peta dan parameter **sintetis**. Kode sudah mendukung **data nyata** (DEM, jalan OpenStreetMap, lokasi shelter) lewat `--data-dir`, lihat bagian 6. Folder `data/demo_bengkulu` hanyalah **data demo berformat sama** (lereng sintetis, jalan grid) untuk menguji pipeline, bukan data nyata Kota Bengkulu. Hasil menunjukkan *cara kerja metodenya*, bukan rekomendasi kebijakan.
 
 ## 1. Latar belakang masalah lokal
 
@@ -48,7 +48,7 @@ Tiap skenario independen (*embarrassingly parallel*), sehingga sweep dibagi rata
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-pytest -q                                   # 4 tes
+pytest -q                                   # 8 tes
 python -m evac.sweep --backend serial --reps 3
 python -m evac.analyze                      # tabel + results/survival.png
 python -m evac.benchmark --workers 1 2 4    # speedup (butuh >1 core)
@@ -63,7 +63,44 @@ python -m evac.benchmark --workers 1 2 4    # speedup (butuh >1 core)
 
 Akses gratis untuk mahasiswa yang disebut pemateri: kompetisi APAC HPC-AI, serta program HPC ASEAN/KADIF.
 
-## 6. Hasil (data sintetis, 108 skenario, 1000 agen per skenario, 3 replikasi)
+## 6. Memakai data nyata
+
+Format folder data (contoh lengkap: `data/demo_bengkulu`, dibuat dengan `python -m evac.demo`):
+
+| Berkas | Isi | Sumber yang disarankan |
+|---|---|---|
+| `config.json` | bbox `[lon_min, lat_min, lon_max, lat_max]`, `cell_m`, `max_runup_m`, dll. | Anda tentukan |
+| `dem.asc` | DEM format ESRI ASCII Grid (EPSG:4326) | DEMNAS (BIG) atau SRTM; potong dengan QGIS, ekspor sebagai ASCII Grid |
+| `roads.geojson` | jalan sebagai LineString | OpenStreetMap, unduh otomatis: `python -m evac.fetch_osm --data-dir data/bengkulu` |
+| `shelters.csv` | kolom `name,lat,lon` | BPBD Kota Bengkulu / InaRISK (BNPB) |
+
+Langkah singkat:
+
+```bash
+mkdir data/bengkulu                      # isi config.json, dem.asc, shelters.csv
+python -m evac.fetch_osm --data-dir data/bengkulu      # roads.geojson dari OSM
+python -m evac.sweep --data-dir data/bengkulu --reps 5 --out results/results_data.csv
+python -m evac.analyze --csv results/results_data.csv --fig results/survival_data.png
+```
+
+Cara loader memproses data: elevasi diambil per sel grid; sel di bawah `sea_below_m` atau di luar DEM dianggap laut; gelombang merambat dari laut ke sel dengan elevasi di bawah `max_runup_m`; penduduk hanya muncul dan bergerak di jalan rawan-genangan; tujuan evakuasi adalah shelter (di-snap ke jalan terdekat) dan jalan yang lebih tinggi dari `max_runup_m`.
+
+`evac.fetch_osm` ditulis untuk Overpass API, tetapi belum diuji terhadap server sebenarnya (hanya pengubah format hasilnya yang diuji). Jika gagal, unduh jalan lewat QGIS/OSM dan simpan sebagai `roads.geojson`.
+
+### Hasil pada data demo (36 skenario, 1000 agen, 3 replikasi)
+
+Tingkat selamat (%) berdasarkan jeda peringatan (baris) dan waktu tiba tsunami di pantai (kolom):
+
+| Jeda peringatan | tiba 10 mnt | tiba 15 mnt | tiba 20 mnt |
+|---|---|---|---|
+| 0 menit | 99,9 | 100 | 100 |
+| 5 menit | 98,8 | 99,9 | 100 |
+| 10 menit | 91,1 | 98,8 | 99,9 |
+| 15 menit | 77,9 | 91,1 | 98,8 |
+
+Angka ini berasal dari data demo, bukan data nyata. Ganti dengan data asli sebelum menarik kesimpulan.
+
+## 7. Hasil model sintetis (108 skenario, 1000 agen, 3 replikasi)
 
 Tingkat selamat (%) berdasarkan jeda peringatan:
 
@@ -91,18 +128,23 @@ Berdasarkan jumlah jembatan:
 
 **Benchmark:** pada lingkungan pengembangan yang hanya punya 1 core, 2 worker tidak mempercepat (speedup 1,03×, efisiensi 0,52). Itu wajar karena tidak ada core tambahan. Jalankan `benchmark.py` di mesin multi-core atau cluster untuk kurva speedup yang sebenarnya.
 
-## 7. Keterbatasan dan pengembangan lanjut
+## 8. Keterbatasan dan pengembangan lanjut
 
-- Ganti peta sintetis dengan data nyata (DEM, OpenStreetMap, titik TES/shelter BPBD).
+- Jalankan dengan data nyata (DEM, OpenStreetMap, titik TES/shelter BPBD) dan validasi hasilnya.
+- Penduduk saat ini tersebar acak di jalan; gunakan sebaran penduduk per kelurahan (BPS).
 - Model gelombang masih sangat sederhana; gandeng dengan hasil simulasi inundasi (mis. dari BMKG/BNPB).
 - Perilaku agen belum mencakup kendaraan, keluarga yang saling mencari, atau kapasitas shelter terbatas.
 - Kalibrasi dan validasi dengan ahli kebencanaan sebelum dipakai untuk keputusan.
 - Tambahkan API Node.js/Express untuk mengirim skenario dan mengambil hasil, serta dashboard web (sesuai ide pemateri soal *workflow* hingga aplikasi).
 
-## 8. Struktur repositori
+## 9. Struktur repositori
 
 ```
-evac/model.py        model agen + peta
+evac/model.py        model agen + peta sintetis
+evac/data.py         loader data nyata (DEM, jalan, shelter)
+evac/fetch_osm.py    unduh jalan dari OpenStreetMap
+evac/demo.py         pembuat data demo
+data/demo_bengkulu/  data demo berformat sama dengan data nyata
 evac/sweep.py        parameter sweep (serial / multiprocessing / MPI)
 evac/analyze.py      tabel dan grafik
 evac/benchmark.py    speedup dan efisiensi
