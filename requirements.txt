@@ -1,0 +1,6 @@
+numpy>=1.24
+pandas>=2.0
+matplotlib>=3.7
+pytest>=7.0
+# Opsional, hanya untuk backend MPI di cluster HPC:
+# mpi4py>=3.1
