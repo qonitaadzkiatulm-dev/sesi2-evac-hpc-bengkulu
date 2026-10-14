@@ -1,3 +1,8 @@
+| **Nama** | Qonita Adzkiatul Mardiyah |
+|---|---|
+| **NPM** | G1A023086 |
+
+
 # Studi Kasus HPC: Simulasi Evakuasi Tsunami Pesisir Bengkulu
 
 Studi kasus berdasarkan kuliah tamu **"Bridging Global Infrastructure to Address Local Challenge in High Performance Computing"** (Dr. Warawan, Thammasat University, Informatics Practitioner Lecture Series). Repositori ini menunjukkan alur *integrator* yang dibahas pemateri: dari **masalah lokal → model → workflow komputasi → eksekusi paralel di HPC → hasil yang bisa dipakai pengambil keputusan**.
